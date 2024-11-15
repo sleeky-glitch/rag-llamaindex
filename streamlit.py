@@ -4,6 +4,8 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.node_parser import SimpleNodeParser
+import re
 
 st.set_page_config(
   page_title="Rag based bot for GPMC using Llamaindex",
@@ -26,20 +28,32 @@ if "messages" not in st.session_state.keys():
 
 @st.cache_resource(show_spinner=False)
 def load_data():
-  reader = SimpleDirectoryReader(input_dir="./data", recursive=True)
+  # Configure node parser to keep track of source information
+  node_parser = SimpleNodeParser.from_defaults(
+      chunk_size=512,
+      chunk_overlap=50,
+  )
+  
+  reader = SimpleDirectoryReader(
+      input_dir="./data",
+      recursive=True,
+      filename_as_id=True  # This will help in tracking source files
+  )
   docs = reader.load_data()
   
-  # Enhanced system prompt for more detailed responses
   system_prompt = """You are an authoritative expert on the GPMC Act and the Ahmedabad Municipal Corporation. 
   Your responses should be:
   1. Comprehensive and detailed
   2. Include step-by-step procedures when applicable
   3. Quote relevant sections directly from the GPMC Act
-  4. Provide specific references (section numbers, chapters)
+  4. Provide specific references (section numbers, chapters, and page numbers)
   5. Break down complex processes into numbered steps
   6. Include any relevant timelines or deadlines
   7. Mention any prerequisites or requirements
   8. Highlight important caveats or exceptions
+  
+  For every fact or statement, include a reference to the source document and page number in this format:
+  [Source: Document_Name, Page X]
   
   Always structure your responses in a clear, organized manner using:
   - Bullet points for lists
@@ -50,24 +64,50 @@ def load_data():
   If multiple interpretations are possible, explain each one clearly."""
 
   Settings.llm = OpenAI(
-      model="gpt-4",  # Using GPT-4 for more detailed and accurate responses
-      temperature=0.1,  # Lower temperature for more focused responses
+      model="gpt-4",
+      temperature=0.1,
       system_prompt=system_prompt,
   )
   
-  index = VectorStoreIndex.from_documents(docs)
+  index = VectorStoreIndex.from_documents(
+      docs,
+      node_parser=node_parser,
+      show_progress=True
+  )
   return index
 
 index = load_data()
 
+def extract_references(text):
+  """Extract references from the text and create clickable links"""
+  pattern = r'$Source: ([^,]+), Page (\d+)$'
+  matches = re.finditer(pattern, text)
+  
+  for match in matches:
+      doc_name, page = match.groups()
+      # Create a clickable link that opens the PDF to the specific page
+      link = f'<a href="data/{doc_name}.pdf#page={page}" target="_blank">[Source: {doc_name}, Page {page}]</a>'
+      text = text.replace(match.group(0), link)
+  
+  return text
+
+def format_response(response):
+  # Add markdown formatting for better readability
+  formatted_response = response.replace("Step ", "\n### Step ")
+  formatted_response = formatted_response.replace("Note:", "\n> **Note:**")
+  formatted_response = formatted_response.replace("Important:", "\n> **Important:**")
+  
+  # Add references with clickable links
+  formatted_response = extract_references(formatted_response)
+  
+  return formatted_response
+
 if "chat_engine" not in st.session_state.keys():
-  # Configure retriever for more comprehensive context
   retriever = VectorIndexRetriever(
       index=index,
-      similarity_top_k=5,  # Increase the number of relevant chunks retrieved
+      similarity_top_k=5,
   )
   
-  # Configure response synthesizer for detailed responses
   response_synthesizer = get_response_synthesizer(
       response_mode="tree_summarize",
       verbose=True,
@@ -81,20 +121,20 @@ if "chat_engine" not in st.session_state.keys():
       response_synthesizer=response_synthesizer,
   )
 
-# Add a helper function to format the response
-def format_response(response):
-  # Add markdown formatting for better readability
-  formatted_response = response.replace("Step ", "\n### Step ")
-  formatted_response = formatted_response.replace("Note:", "\n> **Note:**")
-  formatted_response = formatted_response.replace("Important:", "\n> **Important:**")
-  return formatted_response
+# Add a sidebar for document navigation
+with st.sidebar:
+  st.header("📚 Reference Documents")
+  st.write("Click on references in the chat to view source documents.")
 
 if prompt := st.chat_input("Ask a question about GPMC Act or AMC procedures"):
   st.session_state.messages.append({"role": "user", "content": prompt})
 
 for message in st.session_state.messages:
   with st.chat_message(message["role"]):
-      st.markdown(message["content"])
+      if message["role"] == "assistant":
+          st.markdown(message["content"], unsafe_allow_html=True)
+      else:
+          st.markdown(message["content"])
 
 if st.session_state.messages[-1]["role"] != "assistant":
   with st.chat_message("assistant"):
@@ -102,10 +142,23 @@ if st.session_state.messages[-1]["role"] != "assistant":
       response_text = ""
       for response in response_stream.response_gen:
           response_text += response
-          st.markdown(format_response(response_text))
+          st.markdown(format_response(response_text), unsafe_allow_html=True)
       
       message = {
           "role": "assistant",
           "content": format_response(response_text)
       }
       st.session_state.messages.append(message)
+
+# Add CSS for better formatting of references
+st.markdown("""
+<style>
+  a {
+      color: #0078ff;
+      text-decoration: none;
+  }
+  a:hover {
+      text-decoration: underline;
+  }
+</style>
+""", unsafe_allow_html=True)
