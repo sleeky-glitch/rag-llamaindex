@@ -95,7 +95,6 @@ def format_response(response):
   return formatted_response
 
 if "chat_engine" not in st.session_state.keys():
-  # Initialize chat engine with default settings
   st.session_state.chat_engine = index.as_chat_engine(
       chat_mode="condense_question",
       verbose=True,
@@ -123,15 +122,23 @@ for message in st.session_state.messages:
 
 if st.session_state.messages[-1]["role"] != "assistant":
   with st.chat_message("assistant"):
-      response_stream = st.session_state.chat_engine.stream_chat(prompt)
+      # Create a placeholder for the streaming response
+      response_placeholder = st.empty()
       response_text = ""
+      
+      # Get streaming response
+      response_stream = st.session_state.chat_engine.stream_chat(prompt)
+      
+      # Process the stream
       for response in response_stream.response_gen:
           response_text += response
-          st.markdown(format_response(response_text), unsafe_allow_html=True)
+          response_placeholder.markdown(format_response(response_text), unsafe_allow_html=True)
       
+      # After stream is complete, add to message history
+      final_response = format_response(response_text)
       message = {
           "role": "assistant",
-          "content": format_response(response_text)
+          "content": final_response
       }
       st.session_state.messages.append(message)
 
