@@ -95,20 +95,16 @@ def format_response(response):
   return formatted_response
 
 if "chat_engine" not in st.session_state.keys():
-  query_engine = index.as_query_engine(
-      similarity_top_k=5,
-      response_synthesizer=get_response_synthesizer(
-          response_mode="tree_summarize",
-          verbose=True,
-      ),
-      streaming=True,
-  )
-  
+  # Initialize chat engine with default settings
   st.session_state.chat_engine = index.as_chat_engine(
       chat_mode="condense_question",
       verbose=True,
       streaming=True,
-      query_engine=query_engine
+      similarity_top_k=5,
+      response_synthesizer=get_response_synthesizer(
+          response_mode="tree_summarize",
+          verbose=True,
+      )
   )
 
 with st.sidebar:
@@ -150,4 +146,3 @@ st.markdown("""
   }
 </style>
 """, unsafe_allow_html=True)
-
