@@ -4,6 +4,7 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.core.node_parser import SimpleNodeParser
 import re
+import os
 
 # Set up the Streamlit page configuration
 st.set_page_config(
@@ -99,6 +100,20 @@ def format_response(response):
   formatted_response = extract_references(formatted_response)
   return formatted_response
 
+def list_reference_documents():
+  try:
+      files = os.listdir('./data')
+      pdf_files = [f for f in files if f.endswith('.pdf')]
+      if pdf_files:
+          st.write("Available reference documents:")
+          for pdf in pdf_files:
+              doc_name = os.path.splitext(pdf)[0]
+              st.markdown(f'- [{doc_name}](./data/{pdf})', unsafe_allow_html=True)
+      else:
+          st.write("No reference documents found.")
+  except Exception as e:
+      st.error(f"Error listing documents: {e}")
+
 # Load the index
 index = load_data()
 
@@ -112,7 +127,7 @@ if "chat_engine" not in st.session_state:
 # Sidebar for reference documents
 with st.sidebar:
   st.header("📚 Reference Documents")
-  st.write("Click on references in the chat to view source documents.")
+  list_reference_documents()
 
 # Chat interface
 if prompt := st.chat_input("Ask a question about GPMC Act or AMC procedures"):
