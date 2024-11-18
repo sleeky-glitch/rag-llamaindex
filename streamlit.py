@@ -35,8 +35,8 @@ if "messages" not in st.session_state:
 def load_data():
   try:
       node_parser = SimpleNodeParser.from_defaults(
-          chunk_size=512,
-          chunk_overlap=50,
+          chunk_size=2048,  # Increase chunk size to ensure more content is read
+          chunk_overlap=100,  # Adjust overlap to ensure continuity
       )
       
       reader = SimpleDirectoryReader(
