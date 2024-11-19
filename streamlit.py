@@ -96,7 +96,8 @@ def extract_references(text):
       text = text.replace(match.group(0), link)
       references.append((doc_name, page))
   
-  st.session_state.references = references  # Update session state with current references
+  # Update session state with current references
+  st.session_state.references = list(set(references))  # Use set to avoid duplicate entries
   return text
 
 def format_response(response):
