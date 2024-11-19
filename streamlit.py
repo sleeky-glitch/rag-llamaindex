@@ -106,6 +106,19 @@ def format_response(response):
   formatted_response = formatted_response.replace("Important:", "\n> **Important:**")
   return formatted_response
 
+def list_reference_documents():
+  try:
+      files = os.listdir('./data')
+      pdf_files = [f for f in files if f.endswith('.pdf')]
+      if pdf_files:
+          for pdf in pdf_files:
+              doc_name = os.path.splitext(pdf)[0]
+              st.markdown(f'- [{doc_name}](./data/{pdf})', unsafe_allow_html=True)
+      else:
+          st.write("No reference documents found.")
+  except Exception as e:
+      st.error(f"Error listing documents: {e}")
+
 # Load the index
 index = load_data()
 
@@ -128,19 +141,6 @@ with st.sidebar:
           st.markdown(f'- [Source: {doc_name}, Page {page}](./data/{doc_name}.pdf#page={page})', unsafe_allow_html=True)
   else:
       st.write("No references used yet.")
-
-def list_reference_documents():
-  try:
-      files = os.listdir('./data')
-      pdf_files = [f for f in files if f.endswith('.pdf')]
-      if pdf_files:
-          for pdf in pdf_files:
-              doc_name = os.path.splitext(pdf)[0]
-              st.markdown(f'- [{doc_name}](./data/{pdf})', unsafe_allow_html=True)
-      else:
-          st.write("No reference documents found.")
-  except Exception as e:
-      st.error(f"Error listing documents: {e}")
 
 # Chat interface
 if prompt := st.chat_input("Ask a question about GPMC Act or AMC procedures"):
