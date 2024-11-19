@@ -63,7 +63,8 @@ def load_data():
       For every fact or statement, include a reference to the source document and page number in this format:
       [Source: Document_Name, Page X]
 
-      Read the entire act! which includes all the pages and give responses from all the pages!
+      Read the entire act! which includes all the pages and give responses from all the pages! 
+      Whenever there is a reference to a rule or a statement, search the documents for that rule or statement and also show that.
       
       Always structure your responses in a clear, organized manner using:
       - Bullet points for lists
